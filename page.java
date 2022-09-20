@@ -1,28 +1,29 @@
 import java.awt.*;
 import javax.swing.*;
-import javax.swing.event.MouseInputListener;
+import javax.swing.Timer;
 import javax.swing.text.*;
-//import java.awt.Color;
 import java.awt.event.*;
-class Page extends JFrame{
-    JTextPane pane;
-    //JButton button;
-    DefaultStyledDocument doc;
-    int currentPosition = 0;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.util.*;
 
-    Style style;
-
-    Page(String Title)
+class Page {
+    JFrame frame;
+    Race start;
+    Dictionary<Float,Character> TimingsAndCharacters;
+    ArrayList<Float> Timings;
+    Page()
     {
-        super(Title);
-        setSize(750,500);
-        setLayout(new GridLayout());
-        setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
-        addMouseListener(new MouseListener() {
+        frame = new JFrame();
+        TimingsAndCharacters = new Hashtable<Float,Character>();
+        Timings = new ArrayList<>();
+        start = new Race("Title",frame,TimingsAndCharacters, Timings);
+        
+        frame.addMouseListener(new MouseListener() {
 
             @Override
             public void mouseClicked(MouseEvent e) {
-                pane.requestFocus();
+                start.pane.requestFocus();
             }
 
             @Override
@@ -45,25 +46,111 @@ class Page extends JFrame{
                 
             }
         });
+        frame.addPropertyChangeListener("title", new PropertyChangeListener() {
+
+            @Override
+            public void propertyChange(PropertyChangeEvent evt) {
+                frame.setVisible(false);
+                frame.getContentPane().removeAll();
+                frame.repaint();
+                RaceFinished();
+            }
+            
+        });
+        
+    }
+
+    public void RaceFinished(){
+        frame.removeAll();
+        System.out.println(TimingsAndCharacters.toString());
+        Results results = new Results("Title", frame, TimingsAndCharacters, Timings);
+        results.show(frame);
+    }
+}
+
+class Results{
+    JTextArea label;
+    float currentTime =0;
+    Timer timer;
+    int currentPosition =0;
+
+    Results(String Title, JFrame frame, Dictionary<Float, Character> TimingsAndCharacters, ArrayList<Float> Timings){
+        frame.setTitle(Title);
+        label = new JTextArea();
+        for(int i = 0; i < TimingsAndCharacters.size(); i++)
+        {
+            label.setText(label.getText() + TimingsAndCharacters.get(Timings.get(i)));
+        }
+        label.setBounds(50,50,200,200);
+        timer = new Timer(1, new ActionListener(){
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                    try{
+                        label.setText(label.getText() + TimingsAndCharacters.get(currentTime));
+                        currentPosition++;
+                        if(currentPosition >= TimingsAndCharacters.size())
+                        {
+                            timer.stop();
+                        }
+                    }
+                    catch(Exception i){
+
+                    }
+                    currentTime += 0.001;
+                }
+            });
+        frame.add(label);
+    }
+    public void show(JFrame frame)
+    {
+        frame.setVisible(true);
+        timer.start();
+    }
+}
+
+class Race{
+    JTextPane pane;
+    //JButton button;
+    DefaultStyledDocument doc;
+    int currentPosition = 0;
+    Timer timer;
+    float currentTime = 0;
+
+    Style style;
+
+    Race(String Title, JFrame frame, Dictionary<Float,Character> TimingsAndCharacters, ArrayList<Float> Timings)
+    {
+        frame.setTitle(Title);
+        frame.setSize(750,500);
+        frame.setLayout(null);
+        frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
 
         doc = new DefaultStyledDocument();
 
         pane = new JTextPane(doc);
-        pane.setBounds(50,50,300,200);
+        pane.setSize(500,100);
+        pane.setLocation((frame.getWidth() - pane.getWidth())/2, (frame.getHeight() - pane.getHeight())/2);
         pane.setEditable(false);
-        pane.setText("Hello");
+        pane.setText("Testing");
+        pane.setFont(new Font(Font.SANS_SERIF,Font.PLAIN,24));
+        /*
+         * set pane text alligment to middle
+         */
+        style = pane.addStyle("",null);
+        StyleConstants.setAlignment(style, StyleConstants.ALIGN_CENTER);
+        doc.setParagraphAttributes(0, doc.getLength(), style, false);
+         
+        pane.setBackground(new Color(240,240,240));
         pane.addKeyListener(new KeyListener(){
             @Override
             public void keyTyped(KeyEvent e) {
-                logic(e.getKeyChar());
+                logic(e.getKeyChar(), frame,TimingsAndCharacters, Timings);
             }
 
             @Override
             public void keyPressed(KeyEvent e) {
-                if(e.getExtendedKeyCode() == KeyEvent.VK_BACK_SPACE)
-                {
-                    //backspace();
-                }
+
             }
 
             @Override
@@ -72,27 +159,40 @@ class Page extends JFrame{
             }
         });
         pane.setFocusable(true);
-        add(pane);
+        frame.add(pane);
+        int delay = 1;
+        timer = new Timer(delay, new ActionListener(){
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                currentTime += 0.001;
+            }
+        });
         
-        /*button = new JButton();
-        //button.setSize(100,100);
-        //button.setLocation(50,50);
-        //button.addActionListener(new ActionListener(){
+        /*
+        button = new JButton();
+        button.setSize(100,100);
+        button.setLocation(50,50);
+        button.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e)
             {
                 StyleConstants.setForeground(style, Color.orange);
                 pane.getStyledDocument().setCharacterAttributes(currentPosition,1,style, true);
                 currentPosition++;
             }
-        });*/
+        });
+        */
     }
 
-    public void logic(char KeyChar)
+    public void logic(char KeyChar, JFrame frame, Dictionary<Float, Character> TimingsAndCharacters, ArrayList<Float> Timings)
     {
-        
+        TimingsAndCharacters.put(currentTime, KeyChar);
+        Timings.add(currentTime);
+        if(!timer.isRunning())
+        {
+            timer.start();
+        }
         if(KeyChar == KeyEvent.VK_BACK_SPACE){
-            if(currentPosition == 0)
-            {
+            if(currentPosition == 0){
                 //stops from breaking
             }
             else{
@@ -102,13 +202,22 @@ class Page extends JFrame{
                 pane.getStyledDocument().setCharacterAttributes(currentPosition,1,style, true);
             }
         }
+        else if((KeyChar == KeyEvent.VK_SPACE || KeyChar == KeyEvent.VK_ENTER) && currentPosition == pane.getText().length()){
+            System.out.println("END");
+            frame.setTitle("changed");
+        }
         else if(KeyChar == pane.getText().charAt(currentPosition)){
             Style style = pane.addStyle("", null);
             StyleConstants.setForeground(style, Color.green);
             pane.getStyledDocument().setCharacterAttributes(currentPosition,1,style, true);
             currentPosition++;
+            if(currentPosition == pane.getText().length())
+            {
+                System.out.println();
+                frame.setTitle("changed");
+            }
         }
-        else if(KeyChar != pane.getText().charAt(currentPosition)){
+        else if(KeyChar != pane.getText().charAt(currentPosition)){        
             Style style = pane.addStyle("", null);
             StyleConstants.setForeground(style, Color.red);
             pane.getStyledDocument().setCharacterAttributes(currentPosition,1,style, true);
@@ -116,14 +225,23 @@ class Page extends JFrame{
         }
     }
 
+    public static void setTimeout(Runnable runnable, int delay){
+        new Thread(() -> {
+            try {
+                Thread.sleep(delay);
+                runnable.run();
+            }
+            catch (Exception e){
+                System.err.println(e);
+            }
+        }).start();
+    }
 }
-
-
 class caller{
     public static void main(String[] args)
     {
-        Page go = new Page("Experiment");
-        go.setVisible(true);
-        go.pane.requestFocus();
+        Page go = new Page();
+        go.frame.setVisible(true);
+        go.start.pane.requestFocus();
     }
 }
