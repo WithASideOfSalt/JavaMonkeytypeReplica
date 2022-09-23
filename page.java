@@ -10,12 +10,12 @@ import java.util.*;
 class Page {
     JFrame frame;
     Race start;
-    Dictionary<Float,Character> TimingsAndCharacters;
-    ArrayList<Float> Timings;
+    Dictionary<Integer,Character> TimingsAndCharacters;
+    ArrayList<Integer> Timings;
     Page()
     {
         frame = new JFrame();
-        TimingsAndCharacters = new Hashtable<Float,Character>();
+        TimingsAndCharacters = new Hashtable<Integer,Character>();
         Timings = new ArrayList<>();
         start = new Race("Title",frame,TimingsAndCharacters, Timings);
         
@@ -50,10 +50,13 @@ class Page {
 
             @Override
             public void propertyChange(PropertyChangeEvent evt) {
-                frame.setVisible(false);
-                frame.getContentPane().removeAll();
-                frame.repaint();
-                RaceFinished();
+                if(frame.getTitle() == "changed")
+                {
+                    frame.setVisible(false);
+                    frame.getContentPane().removeAll();
+                    frame.repaint();
+                    RaceFinished();
+                }
             }
             
         });
@@ -61,52 +64,91 @@ class Page {
     }
 
     public void RaceFinished(){
-        frame.removeAll();
         System.out.println(TimingsAndCharacters.toString());
-        Results results = new Results("Title", frame, TimingsAndCharacters, Timings);
+        System.out.println(Timings);
+        Results results = new Results("Title", frame);
+        results.setTimes(Timings);
+        results.setTANDC(TimingsAndCharacters);
         results.show(frame);
     }
 }
 
 class Results{
     JTextArea label;
-    float currentTime =0;
-    Timer timer;
+    JButton button;
+    Integer currentTime =0;
     int currentPosition =0;
+    java.util.Timer timer;
 
-    Results(String Title, JFrame frame, Dictionary<Float, Character> TimingsAndCharacters, ArrayList<Float> Timings){
-        frame.setTitle(Title);
+    Dictionary<Integer,Character> TANDC;
+    ArrayList<Integer> Times;
+
+    Results(String Title, JFrame frame){
         label = new JTextArea();
-        for(int i = 0; i < TimingsAndCharacters.size(); i++)
-        {
-            label.setText(label.getText() + TimingsAndCharacters.get(Timings.get(i)));
-        }
-        label.setBounds(50,50,200,200);
-        timer = new Timer(1, new ActionListener(){
+        frame.setTitle("");
 
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                    try{
-                        label.setText(label.getText() + TimingsAndCharacters.get(currentTime));
-                        currentPosition++;
-                        if(currentPosition >= TimingsAndCharacters.size())
-                        {
-                            timer.stop();
-                        }
-                    }
-                    catch(Exception i){
+        button = new JButton();
+        button.setBounds(300,300,100,100);
+        boolean active = false;
+        button.addActionListener(new ActionListener(){
 
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            boolean activetemp = active;
+            if(!active)
+            {
+                activetemp = true;
+                label.setText("");
+                for(int i= 0; i < Times.size(); i++)
+                {
+                    int temp = i;
+                    if(TANDC.get(Times.get(temp)) != KeyEvent.VK_BACK_SPACE)
+                    {
+                        setTimeout(() ->label.setText(label.getText() + TANDC.get(Times.get(temp))), Times.get(i));
                     }
-                    currentTime += 0.001;
+                    else
+                    {
+                        setTimeout(() ->label.setText(label.getText().substring(0, label.getText().length() -1)), Times.get(i));
+                    }
                 }
-            });
+                activetemp = false;
+            } 
+        }
+        });
+
+        label.setBounds(50,50,200,200);
         frame.add(label);
+        frame.add(button);
     }
+
     public void show(JFrame frame)
     {
         frame.setVisible(true);
-        timer.start();
     }
+
+    public void setTimes(ArrayList<Integer> Timings)
+    {
+        Times = Timings;
+    }
+
+    public void setTANDC(Dictionary<Integer, Character> TimingsAndCharacters)
+    {
+        TANDC = TimingsAndCharacters;
+    }
+
+
+    public static void setTimeout(Runnable runnable, int delay){
+        new Thread(() -> {
+            try {
+                Thread.sleep(delay);
+                runnable.run();
+            }
+            catch (Exception e){
+                System.err.println(e);
+            }
+        }).start();
+    }
+
 }
 
 class Race{
@@ -115,11 +157,11 @@ class Race{
     DefaultStyledDocument doc;
     int currentPosition = 0;
     Timer timer;
-    float currentTime = 0;
+    Integer currentTime = 0;
 
     Style style;
 
-    Race(String Title, JFrame frame, Dictionary<Float,Character> TimingsAndCharacters, ArrayList<Float> Timings)
+    Race(String Title, JFrame frame, Dictionary<Integer,Character> TimingsAndCharacters, ArrayList<Integer> Timings)
     {
         frame.setTitle(Title);
         frame.setSize(750,500);
@@ -132,7 +174,7 @@ class Race{
         pane.setSize(500,100);
         pane.setLocation((frame.getWidth() - pane.getWidth())/2, (frame.getHeight() - pane.getHeight())/2);
         pane.setEditable(false);
-        pane.setText("Testing");
+        pane.setText("Hello this is not going well isn't it");
         pane.setFont(new Font(Font.SANS_SERIF,Font.PLAIN,24));
         /*
          * set pane text alligment to middle
@@ -160,11 +202,10 @@ class Race{
         });
         pane.setFocusable(true);
         frame.add(pane);
-        int delay = 1;
-        timer = new Timer(delay, new ActionListener(){
+        timer = new Timer(1, new ActionListener(){
             @Override
             public void actionPerformed(ActionEvent e) {
-                currentTime += 0.001;
+                currentTime += 10;
             }
         });
         
@@ -183,7 +224,7 @@ class Race{
         */
     }
 
-    public void logic(char KeyChar, JFrame frame, Dictionary<Float, Character> TimingsAndCharacters, ArrayList<Float> Timings)
+    public void logic(char KeyChar, JFrame frame, Dictionary<Integer, Character> TimingsAndCharacters, ArrayList<Integer> Timings)
     {
         TimingsAndCharacters.put(currentTime, KeyChar);
         Timings.add(currentTime);
@@ -223,18 +264,6 @@ class Race{
             pane.getStyledDocument().setCharacterAttributes(currentPosition,1,style, true);
             currentPosition++;
         }
-    }
-
-    public static void setTimeout(Runnable runnable, int delay){
-        new Thread(() -> {
-            try {
-                Thread.sleep(delay);
-                runnable.run();
-            }
-            catch (Exception e){
-                System.err.println(e);
-            }
-        }).start();
     }
 }
 class caller{
